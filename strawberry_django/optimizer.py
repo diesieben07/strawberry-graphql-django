@@ -11,7 +11,9 @@ from typing import (
     Any,
     Callable,
     TypeVar,
-    cast, Collection, Union,
+    cast,
+    Collection,
+    Union,
 )
 
 from django.db import models
@@ -103,9 +105,9 @@ _interfaces: defaultdict[
 
 
 def _get_possible_concrete_types(
-        model: type[models.Model],
-        schema: Schema,
-        strawberry_type: Union[StrawberryObjectDefinition, StrawberryType]
+    model: type[models.Model],
+    schema: Schema,
+    strawberry_type: Union[StrawberryObjectDefinition, StrawberryType],
 ) -> Collection[StrawberryObjectDefinition]:
     for object_definition in get_possible_type_definitions(strawberry_type):
         if object_definition.is_interface:
@@ -115,7 +117,7 @@ def _get_possible_concrete_types(
                 for t in schema.schema_converter.type_map.values():
                     t_definition = t.definition
                     if isinstance(
-                            t_definition, StrawberryObjectDefinition
+                        t_definition, StrawberryObjectDefinition
                     ) and issubclass(t_definition.origin, object_definition.origin):
                         interface_definitions.append(t_definition)
                 _interfaces[schema][object_definition] = interface_definitions
@@ -127,7 +129,7 @@ def _get_possible_concrete_types(
                     object_definitions.append(interface_definition)
             return object_definitions
         else:
-            return object_definition,
+            return (object_definition,)
 
 
 @dataclasses.dataclass
@@ -1043,10 +1045,7 @@ def _get_model_hints(
         )
 
     dj_definition = get_django_definition(object_definition.origin)
-    if (
-        dj_definition is None
-        or dj_definition.disable_optimization
-    ):
+    if dj_definition is None or dj_definition.disable_optimization:
         return None
 
     try:
@@ -1055,9 +1054,15 @@ def _get_model_hints(
         PolymorphicModel = None
 
     if not issubclass(model, dj_definition.model):
-        if PolymorphicModel is not None and issubclass(dj_definition.model, PolymorphicModel) and issubclass(dj_definition.model, model):
+        if (
+            PolymorphicModel is not None
+            and issubclass(dj_definition.model, PolymorphicModel)
+            and issubclass(dj_definition.model, model)
+        ):
             return _get_model_hints(
-                dj_definition.model, schema, object_definition,
+                dj_definition.model,
+                schema,
+                object_definition,
                 parent_type=parent_type,
                 info=info,
                 prefix=f"{dj_definition.model._meta.app_label}__{dj_definition.model._meta.model_name}___",
@@ -1201,7 +1206,9 @@ def _get_model_hints_from_connection(
 
             for concrete_n_type in n_types:
                 n_gql_definition = _get_gql_definition(schema, concrete_n_type)
-                assert isinstance(n_gql_definition, (GraphQLObjectType, GraphQLInterfaceType))
+                assert isinstance(
+                    n_gql_definition, (GraphQLObjectType, GraphQLInterfaceType)
+                )
                 n_info = _generate_selection_resolve_info(
                     info,
                     nodes,
@@ -1255,7 +1262,9 @@ def _get_model_hints_from_paginated(
 
         for concrete_n_type in n_types:
             n_gql_definition = _get_gql_definition(schema, concrete_n_type)
-            assert isinstance(n_gql_definition, (GraphQLObjectType, GraphQLInterfaceType))
+            assert isinstance(
+                n_gql_definition, (GraphQLObjectType, GraphQLInterfaceType)
+            )
             n_info = _generate_selection_resolve_info(
                 info,
                 selections,
@@ -1343,7 +1352,9 @@ def optimize(
     if strawberry_type is None:
         return qs
 
-    for inner_object_definition in _get_possible_concrete_types(qs.model, schema, strawberry_type):
+    for inner_object_definition in _get_possible_concrete_types(
+        qs.model, schema, strawberry_type
+    ):
         parent_type = _get_gql_definition(schema, inner_object_definition)
         new_store = _get_model_hints(
             qs.model,

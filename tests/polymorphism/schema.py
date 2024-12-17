@@ -26,7 +26,9 @@ class ResearchProjectType(ProjectType):
 class Query:
     projects: list[ProjectType] = strawberry_django.field()
     projects_paginated: list[ProjectType] = strawberry_django.field(pagination=True)
-    projects_offset_paginated: OffsetPaginated[ProjectType] = strawberry_django.offset_paginated()
+    projects_offset_paginated: OffsetPaginated[ProjectType] = (
+        strawberry_django.offset_paginated()
+    )
 
 
 schema = strawberry.Schema(

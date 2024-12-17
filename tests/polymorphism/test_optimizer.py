@@ -105,12 +105,16 @@ def test_polymorphic_offset_paginated_query():
         "projectsOffsetPaginated": {
             "totalCount": 2,
             "results": [
-                {"__typename": "ArtProjectType", "topic": ap.topic, "artist": ap.artist},
+                {
+                    "__typename": "ArtProjectType",
+                    "topic": ap.topic,
+                    "artist": ap.artist,
+                },
                 {
                     "__typename": "ResearchProjectType",
                     "topic": rp.topic,
                     "supervisor": rp.supervisor,
                 },
-            ]
+            ],
         }
     }
