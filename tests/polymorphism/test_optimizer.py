@@ -25,6 +25,7 @@ def test_polymorphic_interface_query():
     }
     """
 
+    # ContentType, base table, two subtables = 4 queries
     with assert_num_queries(4):
         result = schema.execute_sync(query)
     assert not result.errors
@@ -60,6 +61,7 @@ def test_polymorphic_paginated_query():
     }
     """
 
+    # ContentType, base table, two subtables = 4 queries
     with assert_num_queries(4):
         result = schema.execute_sync(query)
     assert not result.errors
@@ -98,6 +100,7 @@ def test_polymorphic_offset_paginated_query():
     }
     """
 
+    # ContentType, base table, two subtables = 4 queries + 1 query for total count
     with assert_num_queries(5):
         result = schema.execute_sync(query)
     assert not result.errors
