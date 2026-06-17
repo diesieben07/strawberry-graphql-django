@@ -1,5 +1,6 @@
 """Code for interacting with Django settings."""
 
+from collections.abc import Collection
 from typing import cast
 
 from django.conf import settings
@@ -32,6 +33,12 @@ class StrawberryDjangoSettings(TypedDict):
     #: when no option is passed to the field itself.
     MUTATIONS_DEFAULT_HANDLE_ERRORS: bool
 
+    #: Path or paths to callables that will convert exceptions raised by mutations
+    #: with handle_django_errors=True. The callables should have type
+    #: DjangoErrorConverter (a callable).
+    #: Should be of the format "path.to.module:member".
+    MUTATIONS_ERROR_CONVERTER: str | Collection[str]
+
     #: If True, `auto` fields that refer to model ids will be mapped to
     #: `relay.GlobalID` instead of `strawberry.ID` for types and filters.
     MAP_AUTO_ID_AS_GLOBAL_ID: bool
@@ -62,6 +69,7 @@ DEFAULT_DJANGO_SETTINGS = StrawberryDjangoSettings(
     GENERATE_ENUMS_FROM_CHOICES=False,
     MUTATIONS_DEFAULT_ARGUMENT_NAME="data",
     MUTATIONS_DEFAULT_HANDLE_ERRORS=False,
+    MUTATIONS_ERROR_CONVERTER="strawberry_django:default_django_error_converter",
     MAP_AUTO_ID_AS_GLOBAL_ID=False,
     DEFAULT_PK_FIELD_NAME="pk",
     USE_DEPRECATED_FILTERS=False,

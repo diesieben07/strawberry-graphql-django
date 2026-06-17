@@ -4,12 +4,6 @@ import inspect
 from typing import TYPE_CHECKING, Annotated, Any, TypeVar, Union
 
 import strawberry
-from django.core.exceptions import (
-    NON_FIELD_ERRORS,
-    ObjectDoesNotExist,
-    PermissionDenied,
-    ValidationError,
-)
 from django.db import models, transaction
 from strawberry import UNSET, relay
 from strawberry.annotation import StrawberryAnnotation
@@ -21,7 +15,8 @@ from strawberry_django.fields.field import (
     StrawberryDjangoFieldBase,
     StrawberryDjangoFieldFilters,
 )
-from strawberry_django.fields.types import OperationInfo, OperationMessage
+from strawberry_django.fields.types import OperationInfo
+from strawberry_django.handle_django_errors import handle_django_exception
 from strawberry_django.optimizer import DjangoOptimizerExtension, optimize
 from strawberry_django.permissions import filter_with_perms, get_with_perms
 from strawberry_django.resolvers import django_resolver
@@ -47,62 +42,6 @@ if TYPE_CHECKING:
     from .types import FullCleanOptions
 
 _T = TypeVar("_T", bound="models.Model | list[models.Model]")
-
-
-def _get_validaton_error_message(error: ValidationError):
-    if not error.message:
-        return "Unknown error"
-
-    return error.message % error.params if error.params else error.message
-
-
-def _get_validation_errors(error: Exception):
-    if isinstance(error, PermissionDenied):
-        kind = OperationMessage.Kind.PERMISSION
-    elif isinstance(error, ValidationError):
-        kind = OperationMessage.Kind.VALIDATION
-    elif isinstance(error, ObjectDoesNotExist):
-        kind = OperationMessage.Kind.ERROR
-    else:
-        kind = OperationMessage.Kind.ERROR
-
-    if isinstance(error, ValidationError) and hasattr(error, "error_dict"):
-        # convert field errors
-        for field, field_errors in (error.error_dict or {}).items():
-            for e in field_errors:
-                yield OperationMessage(
-                    kind=kind,
-                    field=to_camel_case(field) if field != NON_FIELD_ERRORS else None,
-                    message=_get_validaton_error_message(e),
-                    code=getattr(e, "code", None),
-                )
-    elif isinstance(error, ValidationError) and hasattr(error, "error_list"):
-        # convert non-field errors
-        for e in error.error_list or []:
-            yield OperationMessage(
-                kind=kind,
-                message=_get_validaton_error_message(e),
-                code=getattr(error, "code", None),
-            )
-    else:
-        msg = getattr(error, "msg", None)
-        if msg is None:
-            msg = str(error)
-
-        yield OperationMessage(
-            kind=kind,
-            message=msg,
-            code=getattr(error, "code", None),
-        )
-
-
-def _handle_exception(error: Exception):
-    if isinstance(error, (ValidationError, PermissionDenied, ObjectDoesNotExist)):
-        return OperationInfo(
-            messages=list(_get_validation_errors(error)),
-        )
-
-    raise error
 
 
 class DjangoMutationBase(StrawberryDjangoFieldBase):
@@ -170,7 +109,7 @@ class DjangoMutationBase(StrawberryDjangoFieldBase):
         try:
             resolved = self.resolver(source, info, args, kwargs)
         except Exception as e:  # noqa: BLE001
-            return _handle_exception(e)
+            return handle_django_exception(e, source, info, args, kwargs)
 
         if inspect.isawaitable(resolved):
 
@@ -178,7 +117,7 @@ class DjangoMutationBase(StrawberryDjangoFieldBase):
                 try:
                     return await resolved
                 except Exception as e:  # noqa: BLE001
-                    return _handle_exception(e)
+                    return handle_django_exception(e, source, info, args, kwargs)
 
             return async_resolver()
 
